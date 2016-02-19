@@ -4,6 +4,8 @@ Aston
 
 Aston is a cross-platform, open source program for the analysis of chromatographic data. It's named for Francis William Aston, creator of the first fully functional mass spectrometer, and written using Python, Numpy, Scipy, Matplotlib, SqlAlchemy and PyQt.
 
+This is the graphical interface to Aston and should be usable on Macs, Windows, and Linux.
+
 Getting Started
 ***************
 

@@ -1,4 +1,5 @@
 import codecs
+from functools import partial
 import os.path as op
 from PyQt5 import QtGui, QtWidgets
 
@@ -20,27 +21,41 @@ from aston.peaks.Integrators import integrate_peaks
 from aston.qtgui.Fields import aston_field_opts
 
 
+def add_opts_to_menu(menu, opts, fxn, dflt=None):
+    menu_gp = QtWidgets.QActionGroup(menu.parent())
+    for opt in opts:
+        act = menu.addAction(opt, partial(fxn, opt))
+        act.setData(opt)
+        act.setCheckable(True)
+        if opt == dflt:
+            act.setChecked(True)
+        menu_gp.addAction(act)
+
+
 class AstonWindow(QtWidgets.QMainWindow):
+    state = {}
+
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        #my icon!
+        # my icon!
         icn_path = resfile('aston/qtgui', 'icons/logo.png')
         self.setWindowIcon(QtGui.QIcon(icn_path))
 
-        #quick fix for Mac OS menus
+        # quick fix for Mac OS menus
         self.ui.actionSettings.setMenuRole(QtWidgets.QAction.NoRole)
 
-        #set up the list of files in the current directory
+        # set up the list of files in the current directory
         fdir = get_pref('Default.FILE_DIRECTORY')
         self.load_new_file_db(fdir)
 
-        #connect the menu logic
+        # connect the menu logic
         self.ui.actionOpen.triggered.connect(self.open_folder)
-        self.ui.actionExportChromatogram.triggered.connect( \
-          self.exportChromatogram)
+        self.ui.actionExportChromatogram.triggered.connect(
+            self.exportChromatogram
+        )
         self.ui.actionExportSpectra.triggered.connect(self.exportSpectrum)
         self.ui.actionExportSelectedItems.triggered.connect(self.exportItems)
         self.ui.actionIntegrate.triggered.connect(self.integrate)
@@ -49,16 +64,16 @@ class AstonWindow(QtWidgets.QMainWindow):
         self.ui.actionQuit.triggered.connect(QtWidgets.qApp.quit)
         self.ui.loadPeakList.triggered.connect(self.load_peaks)
 
-        #hook up the windows to the menu
-        for ac in [self.ui.actionFiles, self.ui.actionSettings, \
-          self.ui.actionSpectra, self.ui.actionMethods, \
-          self.ui.actionCompounds, self.ui.actionPalette]:
+        # hook up the windows to the menu
+        for ac in [self.ui.actionFiles, self.ui.actionSettings,
+                   self.ui.actionSpectra, self.ui.actionMethods,
+                   self.ui.actionCompounds, self.ui.actionPalette]:
             ac.triggered.connect(self.updateWindows)
 
-        #set up the grouping for the dock widgets and
-        #hook the menus up to the windows
-        for ac in [self.ui.filesDockWidget, self.ui.paletteDockWidget, \
-                   self.ui.spectraDockWidget, self.ui.settingsDockWidget, \
+        # set up the grouping for the dock widgets and
+        # hook the menus up to the windows
+        for ac in [self.ui.filesDockWidget, self.ui.paletteDockWidget,
+                   self.ui.spectraDockWidget, self.ui.settingsDockWidget,
                    self.ui.methodDockWidget, self.ui.compoundDockWidget]:
             if ac is not self.ui.filesDockWidget:
                 self.tabifyDockWidget(self.ui.filesDockWidget, ac)
@@ -68,27 +83,33 @@ class AstonWindow(QtWidgets.QMainWindow):
         self.ui.compoundDockWidget.setVisible(False)
         self.ui.methodDockWidget.setVisible(False)
 
-        #create the things that keep track of how the plots should look
+        # create the things that keep track of how the plots should look
         self.plotter = Plotter(self)
         self.specplotter = SpecPlotter(self)
 
-        #FIXME
-        ##hook up the search box
-        #self.ui.lineEdit.textChanged.connect(self.updateSearch)
+        # FIXME
+        # hook up the search box
+        # self.ui.lineEdit.textChanged.connect(self.updateSearch)
 
-        ##make integrator options
+        # make integrator options
+        def set_peak_find(x):
+            self.state['peak_finder'] = x
         peak_find_menu = QtWidgets.QMenu(self.ui.menuChromatogram)
         v = list(aston.qtgui.MenuOptions.peak_finders.keys())[0]
-        self._add_opts_to_menu(peak_find_menu, \
-          aston.qtgui.MenuOptions.peak_finders.keys(),
-          lambda: None, v)
+        set_peak_find(v)
+        add_opts_to_menu(peak_find_menu,
+                         aston.qtgui.MenuOptions.peak_finders.keys(),
+                         set_peak_find, v)
         self.ui.actionPeak_Finder.setMenu(peak_find_menu)
 
+        def set_integrator(x):
+            self.state['integrator'] = x
         integrator_menu = QtWidgets.QMenu(self.ui.menuChromatogram)
         v = list(aston.qtgui.MenuOptions.integrators.keys())[0]
-        self._add_opts_to_menu(integrator_menu, \
-          aston.qtgui.MenuOptions.integrators.keys(),
-          lambda: None, v)
+        set_integrator(v)
+        add_opts_to_menu(integrator_menu,
+                         aston.qtgui.MenuOptions.integrators.keys(),
+                         set_integrator, v)
         self.ui.actionIntegrator.setMenu(integrator_menu)
 
         menu_gp = QtWidgets.QActionGroup(self)
@@ -110,7 +131,7 @@ class AstonWindow(QtWidgets.QMainWindow):
         v_cs = self.settings.get_key('color_scheme', dflt='Spectral')
         v = aston_field_opts['color-2d'][v_cs]
         c_opts = list(aston_field_opts['color-2d'].values())
-        self._add_opts_to_menu(color_menu, c_opts, self.set_color_scheme, v)
+        add_opts_to_menu(color_menu, c_opts, self.set_color_scheme, v)
         self.ui.actionColor_Scheme.setMenu(color_menu)
 
         self.ui.actionLegend.triggered.connect(self.set_legend)
@@ -125,11 +146,11 @@ class AstonWindow(QtWidgets.QMainWindow):
         #v_gs = self.settings.get_key('graph_style', dflt='default')
         #v = self.plotter._styles[v_gs]
         #self.plotter.setStyle(v)
-        #self._add_opts_to_menu(style_menu, \
+        #add_opts_to_menu(style_menu, \
         #  self.plotter.availStyles(), self.set_graph_style, v)
         #self.ui.actionGraph_Style.setMenu(style_menu)
 
-        #plot data
+        # plot data
         self.plot_data()
 
         ##set up the compound database
@@ -139,28 +160,19 @@ class AstonWindow(QtWidgets.QMainWindow):
         #    self.cmpd_tab = FileTreeModel(cmpd_db, self.ui.compoundTreeView, \
         #                                  self)
 
-    def _add_opts_to_menu(self, menu, opts, fxn, dflt=None):
-        menu_gp = QtWidgets.QActionGroup(self)
-        for opt in opts:
-            act = menu.addAction(opt, fxn)
-            act.setData(opt)
-            act.setCheckable(True)
-            if opt == dflt:
-                act.setChecked(True)
-            menu_gp.addAction(act)
-        pass
-
     def updateWindows(self):
         """
         Update the tab windows to match the menu.
         """
         self.ui.filesDockWidget.setVisible(self.ui.actionFiles.isChecked())
-        self.ui.settingsDockWidget.setVisible( \
-          self.ui.actionSettings.isChecked())
+        self.ui.settingsDockWidget.setVisible(
+            self.ui.actionSettings.isChecked()
+        )
         self.ui.spectraDockWidget.setVisible(self.ui.actionSpectra.isChecked())
         self.ui.methodDockWidget.setVisible(self.ui.actionMethods.isChecked())
-        self.ui.compoundDockWidget.setVisible( \
-          self.ui.actionCompounds.isChecked())
+        self.ui.compoundDockWidget.setVisible(
+            self.ui.actionCompounds.isChecked()
+        )
         self.ui.paletteDockWidget.setVisible(self.ui.actionPalette.isChecked())
 
     def updateWindowsMenu(self):
@@ -168,20 +180,21 @@ class AstonWindow(QtWidgets.QMainWindow):
         Update the windows menu to match the tab.
         """
         self.ui.actionFiles.setChecked(self.ui.filesDockWidget.isVisible())
-        self.ui.actionSettings.setChecked( \
-          self.ui.settingsDockWidget.isVisible())
+        self.ui.actionSettings.setChecked(
+            self.ui.settingsDockWidget.isVisible()
+        )
         self.ui.actionSpectra.setChecked(self.ui.spectraDockWidget.isVisible())
         self.ui.actionMethods.setChecked(self.ui.methodDockWidget.isVisible())
-        self.ui.actionCompounds.setChecked( \
-          self.ui.compoundDockWidget.isVisible())
+        self.ui.actionCompounds.setChecked(
+            self.ui.compoundDockWidget.isVisible()
+        )
         self.ui.actionPalette.setChecked(self.ui.paletteDockWidget.isVisible())
 
     def show_status(self, msg):
         self.statusBar().showMessage(msg, 2000)
 
     def open_folder(self):
-        folder = str(QtWidgets.QFileDialog.getExistingDirectory(self, \
-          tr("Open Folder")))
+        folder = str(QtWidgets.QFileDialog.getExistingDirectory(self, tr("Open Folder")))  # noqa
         if folder == '':
             return
 
@@ -231,8 +244,8 @@ class AstonWindow(QtWidgets.QMainWindow):
 
     def load_peaks(self):
         ftypes = 'AMDIS (*.*);;Isodat (*.*)'
-        fname = QtWidgets.QFileDialog.getOpenFileName(self, \
-          tr("Open File"), '', ftypes)
+        fname = QtWidgets.QFileDialog.getOpenFileName(self, tr("Open File"),
+                                                      '', ftypes)
         if str(fname) == '':
             return
         from aston.peaks.PeakReader import read_peaks
@@ -254,13 +267,15 @@ class AstonWindow(QtWidgets.QMainWindow):
         self.plot_data()
 
     def exportChromatogram(self):
-        fopts = tr('PNG Image (*.png);;PGF Image (*.pgf);;' + \
-          'RAW Image (*.raw);;RGBA Image (*.rgba);;SVG Image (*.svg);;' + \
-          'EMF Image (*.emf);;EPS Image (*.eps);;' + \
-          'Portable Document Format (*.pdf);;Postscript Image (*.ps);;' + \
-          'Compressed SVG File (*.svgz);;Comma-Delimited Text (*.csv)')
-        fname = str(QtWidgets.QFileDialog.getSaveFileNameAndFilter(self, \
-          tr("Save As..."), filter=fopts)[0])
+        fopts = tr('PNG Image (*.png);;PGF Image (*.pgf);;RAW Image (*.raw);;'
+                   'RGBA Image (*.rgba);;SVG Image (*.svg);;'
+                   'EMF Image (*.emf);;EPS Image (*.eps);;'
+                   'Portable Document Format (*.pdf);;'
+                   'Postscript Image (*.ps);;Compressed SVG File (*.svgz);;'
+                   'Comma-Delimited Text (*.csv)')
+        fname = str(QtWidgets.QFileDialog.getSaveFileNameAndFilter(
+            self, tr("Save As..."), filter=fopts
+        )[0])
         if fname == '':
             return
         elif fname[-4:].lower() == '.csv':
@@ -275,20 +290,21 @@ class AstonWindow(QtWidgets.QMainWindow):
             with open(fname, 'w') as f:
                 f.write(tr('Time') + ',' + ','.join(ts.ions) + ',\n')
                 for t, d in zip(ts.times, ts.data):
-                    f.write(str(t) + ',' + ','.join(str(i) \
-                      for i in d) + '\n')
+                    f.write(str(t) + ',' + ','.join(str(i) for i in d) + '\n')
         else:
             self.plotter.plt.get_figure().savefig(fname, transparent=True)
 
     def exportSpectrum(self):
-        #TODO: this needs to be updated when SpecPlot becomes better
-        fopts = tr('PNG Image (*.png);;PGF Image (*.pgf);;' + \
-          'RAW Image (*.raw);;RGBA Image (*.rgba);;SVG Image (*.svg);;' + \
-          'EMF Image (*.emf);;EPS Image (*.eps);;' + \
-          'Portable Document Format (*.pdf);;Postscript Image (*.ps);;' + \
-          'Compressed SVG File (*.svgz);;Comma-Delimited Text (*.csv)')
-        fname = str(QtWidgets.QFileDialog.getSaveFileNameAndFilter(self, \
-          tr("Save As..."), filter=fopts)[0])
+        # TODO: this needs to be updated when SpecPlot becomes better
+        fopts = tr('PNG Image (*.png);;PGF Image (*.pgf);;RAW Image (*.raw);;'
+                   'RGBA Image (*.rgba);;SVG Image (*.svg);;'
+                   'EMF Image (*.emf);;EPS Image (*.eps);;'
+                   'Portable Document Format (*.pdf);;'
+                   'Postscript Image (*.ps);;Compressed SVG File (*.svgz);;'
+                   'Comma-Delimited Text (*.csv)')
+        fname = str(QtWidgets.QFileDialog.getSaveFileNameAndFilter(
+            self, tr("Save As..."), filter=fopts
+        )[0])
         if fname == '':
             return
         elif fname[-4:].lower() == '.csv':
@@ -338,8 +354,7 @@ class AstonWindow(QtWidgets.QMainWindow):
         return p
 
     def find_peaks(self, tss, plot, isomode=False, mp=False):
-        submnu = self.ui.actionPeak_Finder.menu().children()
-        opt = [i for i in submnu if i.isChecked()][0].text()
+        opt = self.state['peak_finder']
         pf_f = aston.qtgui.MenuOptions.peak_finders[opt]
         pf_fopts = self.get_f_opts(pf_f)
 
@@ -356,8 +371,7 @@ class AstonWindow(QtWidgets.QMainWindow):
             return find_peaks(tss, pf_f, pf_fopts, mp)
 
     def integrate_peaks(self, tss, found_peaks, isomode=False, mp=False):
-        submnu = self.ui.actionIntegrator.menu().children()
-        opt = [i for i in submnu if i.isChecked()][0].text()
+        opt = self.state['integrator']
         int_f = aston.qtgui.MenuOptions.integrators[opt]
         int_fopts = self.get_f_opts(int_f)
 

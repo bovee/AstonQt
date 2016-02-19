@@ -32,31 +32,28 @@ with open('aston/__init__.py') as f:
     exec(f.read())
 
 options = {
-    'name': 'Aston',
+    'name': 'AstonQt',
     'version': __version__,
     'description': 'Mass/UV Spectral Analysis Program',
     'author': 'Roderick Bovee',
     'author_email': 'bovee@fas.harvard.edu',
     'url': 'http://code.google.com/p/aston',
-    'license': 'GPLv3',
+    'license': 'BSD 3-Clause',
     'platforms': ['Any'],
     'classifiers': [
         'Development Status :: 4 - Beta',
         'Environment :: X11 Applications :: Qt',
         'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Topic :: Scientific/Engineering :: Chemistry'
     ],
     'long_description': read('README.rst'),
-    'packages': ['aston', 'aston.calibrations', 'aston.compat', \
-                 'aston.database', 'aston.peaks', 'aston.qtgui', \
-                 'aston.spectra', 'aston.test', 'aston.trace', \
-                 'aston.tracefile'],
+    'packages': ['astonqt', 'astonqt.database',
+                 'astonqt.qtgui', 'astonqt.test'],
     'scripts': ['astonx.py'],
     'data_files': matplotlib.get_py2exe_datafiles(),
-    'package_data': {'aston': \
-      ['qtgui/i18n/*.qm', 'qtgui/icons/*.png']},
+    'package_data': {'aston': ['qtgui/i18n/*.qm', 'qtgui/icons/*.png']},
     'include_package_data': True,
     'install_requires': ['numpy', 'scipy', 'matplotlib', 'sqlalchemy'],
     'test_suite': 'nose.collector',

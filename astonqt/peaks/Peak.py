@@ -24,9 +24,9 @@ class Peak(object):
         else:
             self.components = []
 
-    #@property
-    #def _children(self):
-    #    return self.components
+    @property
+    def _children(self):
+        return self.components
 
     def as_poly(self, mz=None, sub_base=False):
         #TODO: should allow AstonFrames in PeakComponents some day?

@@ -50,7 +50,7 @@ else:
     startx = True
 
 if startx:
-    #for compatibility with Python 2
+    # for compatibility with Python 2
     import sip
     sip.setapi('QVariant', 2)
 
@@ -70,7 +70,7 @@ if startx:
     import multiprocessing
     multiprocessing.freeze_support()
 
-    #all the other imports
+    # all the other imports
     import sys
     import PyQt5
     from aston.qtgui.MainWindow import AstonWindow
@@ -95,5 +95,5 @@ if startx:
     sys.exit(qt.exec_())
 else:
     # do command line things
-    #TODO
+    # TODO
     pass
